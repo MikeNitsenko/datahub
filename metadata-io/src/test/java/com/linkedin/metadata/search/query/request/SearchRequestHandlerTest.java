@@ -1358,7 +1358,7 @@ public class SearchRequestHandlerTest extends AbstractTestNGSpringContextTests {
   /**
    * Of other, V3 matched fields fetch only what names or tags an entity: a document's text,
    * semantic text and custom properties are searched but never fetched, even when highlighting
-   * names them.
+   * names them. Document title is labeled name, so the fetched naming field is name.
    */
   @Test
   public void testV3DocumentSearchFetchesNoFreeText() {
@@ -1380,7 +1380,8 @@ public class SearchRequestHandlerTest extends AbstractTestNGSpringContextTests {
     String query = source.query().toString();
     assertTrue(query.contains("other.text"), query);
     Set<String> fetched = Set.of(source.fetchSource().includes());
-    assertTrue(fetched.containsAll(Set.of("urn", "title")), fetched.toString());
+    assertTrue(fetched.containsAll(Set.of("urn", "name")), fetched.toString());
+    assertFalse(fetched.contains("title"), fetched.toString());
     assertTrue(Collections.disjoint(fetched, freeText), fetched.toString());
 
     OperationContext naming =
@@ -1390,7 +1391,7 @@ public class SearchRequestHandlerTest extends AbstractTestNGSpringContextTests {
                     .setFulltext(true)
                     .setSkipHighlighting(false)
                     .setCustomHighlightingFields(
-                        new StringArray(List.of("title", "text", "customProperties"))));
+                        new StringArray(List.of("name", "text", "customProperties"))));
     assertEquals(
         Set.of(
             handler
@@ -1398,7 +1399,7 @@ public class SearchRequestHandlerTest extends AbstractTestNGSpringContextTests {
                 .source()
                 .fetchSource()
                 .includes()),
-        Set.of("urn", "title"));
+        Set.of("urn", "name"));
   }
 
   /**

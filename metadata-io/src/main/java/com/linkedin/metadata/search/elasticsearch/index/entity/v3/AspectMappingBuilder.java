@@ -70,7 +70,7 @@ public class AspectMappingBuilder {
                         searchableFieldSpec -> {
                           aspectFields.putAll(
                               MultiEntityMappingsBuilder.getAspectMappingsForField(
-                                  searchableFieldSpec, aspectName));
+                                  searchableFieldSpec, aspectName, indexGroup));
                           copySharedHasValues(searchableFieldSpec, aspectFields);
                         });
               }

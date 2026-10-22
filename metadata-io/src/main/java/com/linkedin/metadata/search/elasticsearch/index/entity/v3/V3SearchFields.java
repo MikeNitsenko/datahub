@@ -817,8 +817,11 @@ public final class V3SearchFields {
             (rootField, fieldSpecs) -> {
               final boolean groupHasLabel =
                   fieldSpecs.stream().anyMatch(spec -> !labels(spec).isEmpty());
+              final boolean omitSourceRoot = omitsSourceRoot(rootField, fieldSpecs);
               for (String destination : destinations(fieldSpecs, fallbacks)) {
-                sources.computeIfAbsent(destination, k -> new LinkedHashSet<>()).add(rootField);
+                sources
+                    .computeIfAbsent(destination, k -> new LinkedHashSet<>())
+                    .add(omitSourceRoot ? destination : rootField);
                 if (fieldSpecs.stream()
                     .anyMatch(
                         spec ->
@@ -884,6 +887,30 @@ public final class V3SearchFields {
    * field of that name, whichever aspect declares it. The mappings builder copies each root field
    * into the shared fields of all of them, so the mapping and the query agree.
    */
+  /**
+   * The document root keeps the search label, not a second field under the source name. Chart
+   * {@code title} labeled {@code name} has no root {@code title}. A field whose label is its own
+   * name, or that has no label, keeps its root field.
+   */
+  public static boolean omitsSourceRoot(
+      @Nonnull final String fieldName, @Nonnull final Collection<EntitySpec> entitySpecs) {
+    return omitsSourceRoot(fieldName, rootSourceFieldSpecs(entitySpecs).get(fieldName));
+  }
+
+  public static boolean omitsSourceRoot(
+      @Nonnull final String fieldName, @Nullable final List<SearchableFieldSpec> sources) {
+    if (sources == null || sources.isEmpty()) {
+      return false;
+    }
+    return sources.stream()
+        .allMatch(
+            spec -> {
+              final Optional<String> indexed =
+                  spec.getSearchableAnnotation().resolvedForV3().indexedFieldName();
+              return indexed.filter(name -> !name.isEmpty() && !name.equals(fieldName)).isPresent();
+            });
+  }
+
   @Nonnull
   public static Map<String, List<SearchableFieldSpec>> rootSourceFieldSpecs(
       @Nonnull final Collection<EntitySpec> entitySpecs) {

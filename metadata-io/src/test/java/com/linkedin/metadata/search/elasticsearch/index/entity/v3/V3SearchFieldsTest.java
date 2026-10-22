@@ -53,12 +53,9 @@ public class V3SearchFieldsTest {
             "applications"));
     // Matched fields follow this order, so the catch-all comes last
     assertEquals(List.copyOf(fields.keySet()).get(fields.size() - 1), OTHER);
-    assertTrue(
-        fields.get(ENTITY_NAME).containsAll(List.of("name", "editedName")), fields.toString());
+    assertEquals(fields.get(ENTITY_NAME), List.of("name"), fields.toString());
     assertEquals(fields.get(QUALIFIED_NAME), List.of("qualifiedName"));
-    assertTrue(
-        fields.get(DESCRIPTION).containsAll(List.of("description", "editedDescription")),
-        fields.toString());
+    assertEquals(fields.get(DESCRIPTION), List.of("description"), fields.toString());
     assertFalse(fields.get(DESCRIPTION).contains("fieldDescriptions"), fields.toString());
     assertFalse(fields.containsKey("description_1"), fields.toString());
     assertFalse(fields.containsKey("name_1"), fields.toString());
@@ -94,10 +91,12 @@ public class V3SearchFieldsTest {
             List.of(dataset(), REGISTRY.getEntitySpec("businessAttribute")));
 
     assertTrue(fields.containsKey(DESCRIPTION), fields.toString());
+    assertEquals(fields.get(DESCRIPTION), List.of("description"), fields.toString());
     assertTrue(
-        fields.get(DESCRIPTION).containsAll(List.of("description", "editedDescription")),
+        V3SearchFields.omitsSourceRoot(
+            "editedFieldDescriptions",
+            List.of(dataset(), REGISTRY.getEntitySpec("businessAttribute"))),
         fields.toString());
-    assertTrue(fields.get(DESCRIPTION).contains("editedFieldDescriptions"), fields.toString());
     assertFalse(fields.containsKey("description_1"), fields.toString());
     assertFalse(fields.containsKey("name_1"), fields.toString());
     assertFalse(fields.containsKey("tags_1"), fields.toString());
@@ -130,8 +129,8 @@ public class V3SearchFieldsTest {
   public void testMatchedFieldSourcesKeepOnlyNamesAndTagsOfOther() {
     List<String> datasetSources =
         V3SearchFields.matchedFieldSources(V3SearchFields.fullTextFields(List.of(dataset())));
-    assertTrue(
-        datasetSources.containsAll(List.of("name", "editedName")), datasetSources.toString());
+    assertTrue(datasetSources.contains("name"), datasetSources.toString());
+    assertFalse(datasetSources.contains("editedName"), datasetSources.toString());
     assertTrue(datasetSources.contains("tags"), datasetSources.toString());
     assertTrue(datasetSources.contains("glossaryTerms"), datasetSources.toString());
     assertTrue(datasetSources.contains("platform"), datasetSources.toString());
@@ -144,7 +143,8 @@ public class V3SearchFieldsTest {
     List<String> freeText = List.of("text", "semanticText", "customProperties");
     assertTrue(documentFields.get(OTHER).containsAll(freeText), documentFields.toString());
     List<String> documentSources = V3SearchFields.matchedFieldSources(documentFields);
-    assertTrue(documentSources.contains("title"), documentSources.toString());
+    assertTrue(documentSources.contains("name"), documentSources.toString());
+    assertFalse(documentSources.contains("title"), documentSources.toString());
     assertTrue(documentSources.stream().noneMatch(freeText::contains), documentSources.toString());
   }
 
@@ -191,15 +191,18 @@ public class V3SearchFieldsTest {
         Set.of());
   }
 
-  /** The service entity labels no name, so the field its _entityName alias names is the name. */
+  /**
+   * Service displayName is labeled name, so full text reads name and omits the displayName root.
+   */
   @Test
   public void testEntityWithoutNameLabelSendsItsEntityNameAliasToEntityName() {
     EntitySpec service = REGISTRY.getEntitySpec("service");
 
     Map<String, List<String>> fields = V3SearchFields.fullTextFields(List.of(service));
 
-    assertEquals(fields.get(ENTITY_NAME), List.of("displayName"));
+    assertEquals(fields.get(ENTITY_NAME), List.of("name"));
     assertFalse(fields.get(OTHER).contains("displayName"), fields.toString());
+    assertTrue(V3SearchFields.omitsSourceRoot("displayName", List.of(service)));
   }
 
   @Test
@@ -272,7 +275,11 @@ public class V3SearchFieldsTest {
     Map<String, List<String>> fields =
         V3SearchFields.fullTextFields(List.of(TestEntitySpecBuilder.getSpec()));
 
-    assertTrue(fields.get(ENTITY_NAME).contains("textFieldOverride"), fields.toString());
+    assertEquals(fields.get(ENTITY_NAME), List.of("name"), fields.toString());
+    assertFalse(fields.get(OTHER).contains("textFieldOverride"), fields.toString());
+    assertTrue(
+        V3SearchFields.omitsSourceRoot(
+            "textFieldOverride", List.of(TestEntitySpecBuilder.getSpec())));
     assertEquals(
         V3SearchFields.analyzerSubfields(List.of(TestEntitySpecBuilder.getSpec())).get(ENTITY_NAME),
         Set.of("text", "stemmed"));
